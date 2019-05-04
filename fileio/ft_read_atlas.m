@@ -77,7 +77,7 @@ elseif strcmp(x, '.nii') && exist(fullfile(p, [f '.txt']), 'file')
   % and then a variable number of column text info, where the first column
   % is the index, and the second column the label.
   labelfile = fullfile(p, [f '.txt']);
-  fid = fopen(labelfile, 'rt');
+  fid = fopen_or_error(labelfile, 'rt');
   l1  = fgetl(fid);
   if strcmp(l1(1),'[') && strcmp(l1(end),']')
     defaultformat = 'aal_ext';
@@ -97,7 +97,7 @@ elseif ft_filetype(filename, 'caret_label')
 elseif ~isempty(strfind(filename, 'MPM'))
   % assume to be from the spm_anatomy toolbox
   defaultformat = 'spm_anatomy';
-elseif strcmp(x, '.xml') && (isdir(strtok(fullfile(p,f), '_')) || isdir(strtok(fullfile(p,f), '-')))
+elseif strcmp(x, '.xml') && (isfolder(strtok(fullfile(p,f), '_')) || isfolder(strtok(fullfile(p,f), '-')))
   % fsl-format atlas, this is assumed to consist of an .xml file that
   % specifies the labels, as well as the filenames of the files with the actual data stored
   % in a directory with the of the strtok'ed (with '-' or '_') file name.
@@ -115,7 +115,7 @@ unit       = ft_getopt(varargin, 'unit');
 switch fileformat
   case 'aal'
     labelfile = fullfile(p, [f '.txt']);
-    fid = fopen(labelfile, 'rt');
+    fid = fopen_or_error(labelfile, 'rt');
     C = textscan(fid, '%s%s%d');
     lab = C{2};
     idx = C{3};
@@ -140,7 +140,7 @@ switch fileformat
     
   case 'aal_ext'
     labelfile = fullfile(p, [f '.txt']);
-    fid = fopen(labelfile, 'rt');
+    fid = fopen_or_error(labelfile, 'rt');
     C = textscan(fid, '%d%s%*[^\n]', 'HeaderLines', 1, 'Delimiter', '\t');
     lab = C{2};
     idx = C{1};
@@ -180,8 +180,8 @@ switch fileformat
     
     %labels
     atlas.tissuelabel = cell(1,246);
-    fid = fopen(labelfile, 'rt');
-    lab  = fgetl(fid);%lab='Brainnetome Atlas'
+    fid = fopen_or_error(labelfile, 'rt');
+    lab  = fgetl(fid); %lab='Brainnetome Atlas'
     for label_i=1:246
         atlas.tissuelabel{1,label_i}=fgetl(fid);
     end
@@ -627,6 +627,11 @@ switch fileformat
     
     [p, f, x] = fileparts(filename);
     
+    % if the original file was a .gz
+    if isequal(x,'.gz')
+      [p, f, x] = fileparts(filename(1:end-3));
+    end
+    
     % this is a mat file that Ingrid apparently discovered somewhere
     % filename1 = fullfile(p, [f '_List.mat']);
     
@@ -647,7 +652,7 @@ switch fileformat
       % ...
       
       
-      fid = fopen(filename2);
+      fid = fopen_or_error(filename2);
       i = 1;
       value = [];
       label = {};
@@ -693,8 +698,8 @@ switch fileformat
     end
     
     % replace the original brick with interspersed integers with one that contains contiguous integets
-    atlas.brick0      = new_brick0;
-    atlas.brick0label = label;
+    atlas.parcellation      = new_brick0;
+    atlas.parcellationlabel = label(:);
     
   case {'freesurfer_volume'}
     % numeric values in the volume correspond to a label that can be found
@@ -1827,7 +1832,7 @@ switch fileformat
     atlas.(parcelfield)            = newp;
     atlas.([parcelfield, 'label']) = label;
     atlas.rgba  = rgba;
-    atlas       = ft_convert_units(atlas);
+    atlas       = ft_determine_units(atlas);
     
   case 'caret_label'
     ft_hastoolbox('gifti', 1);
@@ -1904,7 +1909,7 @@ switch fileformat
       tmp       = ft_read_headshape(filenamemesh);
       atlas.pos = tmp.pos;
       atlas.tri = tmp.tri;
-      atlas     = ft_convert_units(atlas);
+      atlas     = ft_determine_units(atlas);
     elseif ~isfield(atlas, 'coordsys')
       atlas.coordsys = 'unknown';
     end
@@ -1912,7 +1917,7 @@ switch fileformat
   case 'spm_anatomy'
     ft_hastoolbox('spm8up', 1);
     
-    % load the map, this is assumed to be the struct array MAP
+    % load the map, this is assumed to be the struct-array MAP
     load(filename);
     [p,f,e]      = fileparts(filename);
     mrifilename  = fullfile(p,[strrep(f, '_MPM',''),'.img']);
@@ -2005,8 +2010,8 @@ if ~isempty(unit)
 else
   % ensure the units of the atlas are specified
   try
-    atlas = ft_convert_units(atlas);
+    atlas = ft_determine_units(atlas);
   catch
-    % ft_convert_units will fail for triangle-only gifties.
+    % ft_determine_units will fail for triangle-only gifties.
   end
 end

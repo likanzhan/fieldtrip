@@ -3,7 +3,7 @@ function test_bug1397
 % MEM 1500mb
 % WALLTIME 00:10:00
 
-% TEST ft_preprocessing ft_appenddata
+% DEPENDENCY ft_preprocessing ft_appenddata
 
 % the following code was obtained from http://www.fieldtriptoolbox.org/tutorial/coherence
 % on Wed Mar 28 15:36:40 CEST 2012
@@ -64,7 +64,7 @@ cfg.hpfreq       = 10;
 cfg.rectify      = 'yes';
 emg = ft_preprocessing(cfg);
 
-% see http://bugzilla.fcdonders.nl/show_bug.cgi?id=1397
+% see http://bugzilla.fieldtriptoolbox.org/show_bug.cgi?id=1397
 % the reported problem in fieldtrip-20120302 was
 % 
 % ??? Error using ==> ft_appenddata at 266

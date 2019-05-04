@@ -10,9 +10,13 @@ function [cfg, artifact] = ft_artifact_muscle(cfg, data)
 % or
 %   cfg.headerfile  = string with the filename
 %   cfg.datafile    = string with the filename
+% and optionally
+%   cfg.headerformat
+%   cfg.dataformat
 %
 % Alternatively you can use it as
 %   [cfg, artifact] = ft_artifact_muscle(cfg, data)
+% where the input data is a structure as obtained from FT_PREPROCESSING.
 %
 % In both cases the configuration should also contain
 %   cfg.trl        = structure that defines the data segments of interest. See FT_DEFINETRIAL
@@ -80,6 +84,7 @@ ft_nargout  = nargout;
 % do the general setup of the function
 ft_defaults
 ft_preamble init
+
 % ft_preamble provenance is not needed because just a call to ft_artifact_zvalue
 % ft_preamble loadvar data is not needed because ft_artifact_zvalue will do this
 

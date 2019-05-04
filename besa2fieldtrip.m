@@ -18,7 +18,7 @@ function data = besa2fieldtrip(input)
 %   *.dat is converted to a structure similar to the output of FT_SOURCANALYSIS
 %   *.dat combined with a *.gen or *.generic is converted to a structure similar to the output of FT_PREPROCESSING
 %
-% Note (*): If the BESA toolbox by Karsten Hochstatter is found on your
+% (*) If the BESA toolbox by Karsten Hochstatter is found on your
 % MATLAB path, the readBESAxxx functions will be used (where xxx=tfc/swf),
 % alternatively the private functions from FieldTrip will be used.
 %
@@ -44,15 +44,6 @@ function data = besa2fieldtrip(input)
 %
 % $Id$
 
-% these are used by the ft_preamble/ft_postamble function and scripts
-ft_revision = '$Id$';
-ft_nargin   = nargin;
-ft_nargout  = nargout;
-
-% do the general setup of the function
-ft_defaults
-ft_preamble callinfo
-
 if isstruct(input) && numel(input)>1
   % use a recursive call to convert multiple inputs
   data = cell(size(input));
@@ -74,7 +65,7 @@ if isstruct(input)
     temp_chans  = char(input.channellabels');
     Nchan       = size(temp_chans,1);
     %{
-    if strcmp(input.type,'COHERENCE_SQUARED')
+    if strcmp(input.type, 'COHERENCE_SQUARED')
          % it contains coherence between channel pairs
          fprintf('reading coherence between %d channel pairs\n', Nchan);
          for i=1:Nchan
@@ -116,7 +107,7 @@ if isstruct(input)
     data.dim      = [nx ny nz];
     % Array with all possible positions (x,y,z)
     data.pos      = WritePosArray(xTemp,yTemp,zTemp,nx,ny,nz);
-    data.inside   = 1:prod(data.dim);%as in Fieldtrip - not correct
+    data.inside   = 1:prod(data.dim); %as in Fieldtrip - not correct
     data.outside  = [];
 
     %--------------------Source Waveform--------------------------------------%
@@ -133,9 +124,9 @@ if isstruct(input)
   elseif strcmp(input.structtype, 'besa_channels')
     %fprintf('BESA data export\n');
 
-    if isfield(input,'datatype')
+    if isfield(input, 'datatype')
       switch input.ft_datatype
-        case {'Raw_Data','Epoched_Data','Segment'}
+        case {'Raw_Data', 'Epoched_Data', 'Segment'}
           data.fsample    = input.samplingrate;
           data.label      = input.channellabels';
           for k=1:size(input.data,2)
@@ -369,22 +360,6 @@ elseif ischar(input)
   end
 
 end % isstruct || ischar
-
-
-% construct and add a configuration to the output
-cfg = [];
-
-if isstruct(input) && isfield(input,'datafile')
-  cfg.filename = input.datafile;
-elseif isstruct(input) && ~isfield(input,'datafile')
-  cfg.filename = 'Unknown';
-elseif ischar(input)
-  cfg.filename = input;
-end
-
-% do the general cleanup and bookkeeping at the end of the function
-ft_postamble callinfo
-ft_postamble history data
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

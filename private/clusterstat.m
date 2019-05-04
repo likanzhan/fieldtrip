@@ -40,6 +40,11 @@ function [stat, cfg] = clusterstat(cfg, statrnd, statobs, varargin)
 cfg.orderedstats = ft_getopt(cfg, 'orderedstats', 'no');
 cfg.multivariate = ft_getopt(cfg, 'multivariate', 'no');
 cfg.minnbchan    = ft_getopt(cfg, 'minnbchan',    0);
+cfg.spmversion   = ft_getopt(cfg, 'spmversion', 'spm8');
+cfg.wcm_weight   = ft_getopt(cfg, 'wcm_weight', 1);
+
+% ensure that the preferred SPM version is on the path
+ft_hastoolbox(cfg.spmversion, 1);
 
 if cfg.tail~=cfg.clustertail
   ft_error('cfg.tail and cfg.clustertail should be identical')
@@ -191,7 +196,7 @@ if needpos
     posclusobs = posclusobs(cfg.inside);
     
   else
-    if 0
+    if false
       posclusobs = findcluster(reshape(postailobs, [cfg.dim,1]),cfg.chancmbneighbstructmat,cfg.chancmbneighbselmat,cfg.minnbchan);
     else
       posclusobs = findcluster(reshape(postailobs, [cfg.dim,1]),channeighbstructmat,cfg.minnbchan);
@@ -202,7 +207,7 @@ if needpos
   fprintf('found %d positive clusters in observed data\n', Nobspos);
   
 end % if needpos
-if needneg,
+if needneg
   
   if spacereshapeable
     % this pertains to data for which the spatial dimension can be reshaped
@@ -222,7 +227,7 @@ if needneg,
     negclusobs = negclusobs(cfg.inside);
     
   else
-    if 0
+    if false
       negclusobs = findcluster(reshape(negtailobs, [cfg.dim,1]),cfg.chancmbneighbstructmat,cfg.chancmbneighbselmat,cfg.minnbchan);
     else
       negclusobs = findcluster(reshape(negtailobs, [cfg.dim,1]),channeighbstructmat,cfg.minnbchan);
@@ -291,7 +296,12 @@ for i=1:Nrand
       elseif strcmp(cfg.clusterstatistic, 'maxsum')
         stat(j) = sum(statrnd(posclusrnd==j,i));
       elseif strcmp(cfg.clusterstatistic, 'wcm')
-        stat(j) = sum((statrnd(posclusrnd==j,i)-postailcritval).^cfg.wcm_weight);
+        if numel(postailcritval)==1
+          posthr = postailcritval;
+        elseif numel(postailcritval)==numel(posclusrnd)
+          posthr = postailcritval(posclusrnd==j);
+        end
+        stat(j) = sum((statrnd(posclusrnd==j,i)-posthr).^cfg.wcm_weight);
       else
         ft_error('unknown clusterstatistic');
       end
@@ -340,7 +350,12 @@ for i=1:Nrand
       elseif strcmp(cfg.clusterstatistic, 'maxsum')
         stat(j) = sum(statrnd(negclusrnd==j,i));
       elseif strcmp(cfg.clusterstatistic, 'wcm')
-        stat(j) = -sum((abs(statrnd(negclusrnd==j,i)-negtailcritval)).^cfg.wcm_weight); % encoded as a negative value
+        if numel(negtailcritval)==1
+          negthr = negtailcritval;
+        elseif numel(negtailcritval)==numel(negclusrnd)
+          negthr = negtailcritval(negclusrnd==j);
+        end
+        stat(j) = -sum((abs(statrnd(negclusrnd==j,i)-negthr)).^cfg.wcm_weight); % encoded as a negative value
       else
         ft_error('unknown clusterstatistic');
       end
@@ -372,7 +387,12 @@ if needpos
     elseif strcmp(cfg.clusterstatistic, 'maxsum')
       stat(j) = sum(statobs(posclusobs==j));
     elseif strcmp(cfg.clusterstatistic, 'wcm')
-      stat(j) = sum((statobs(posclusobs==j)-postailcritval).^cfg.wcm_weight);
+      if numel(postailcritval)==1
+        posthr = postailcritval;
+      elseif numel(postailcritval)==numel(posclusrnd)
+        posthr = postailcritval(posclusobs==j);
+      end
+      stat(j) = sum((statobs(posclusobs==j)-posthr).^cfg.wcm_weight);
     else
       ft_error('unknown clusterstatistic');
     end
@@ -437,7 +457,7 @@ if needpos
   end
 end
 
-if needneg,
+if needneg
   negclusters = [];
   stat = zeros(1,Nobsneg);
   for j = 1:Nobsneg
@@ -448,7 +468,12 @@ if needneg,
     elseif strcmp(cfg.clusterstatistic, 'maxsum')
       stat(j) = sum(statobs(negclusobs==j));
     elseif strcmp(cfg.clusterstatistic, 'wcm')
-      stat(j) = -sum((abs(statobs(negclusobs==j)-negtailcritval)).^cfg.wcm_weight); % encoded as a negative value
+      if numel(negtailcritval)==1
+        negthr = negtailcritval;
+      elseif numel(negtailcritval)==numel(negclusrnd)
+        negthr = negtailcritval(negclusobs==j);
+      end
+      stat(j) = -sum((abs(statobs(negclusobs==j)-negthr)).^cfg.wcm_weight); % encoded as a negative value
     else
       ft_error('unknown clusterstatistic');
     end

@@ -14,21 +14,23 @@ function [realign, snap] = ft_volumerealign(cfg, mri, target)
 % implemented, which are described in detail below:
 %
 % INTERACTIVE - Use a graphical user interface to click on the location of anatomical
-% fiducials. The coordinate system is updated according to the definition of the
-% coordinates of these fiducials.
+% landmarks or fiducials. The anatomical data can be displayed as three orthogonal
+% MRI slices or as a rendering of the head surface. The coordinate system is updated
+% according to the definition of the coordinates of these fiducials.
 %
 % FIDUCIAL - The coordinate system is updated according to the definition of the
-% coordinates of fiducials that are specified in the configuration.
+% coordinates of anatomical landmarks or fiducials that are specified in the
+% configuration.
 %
 % HEADSHAPE - Match the head surface from the MRI with a measured head surface using
 % an iterative closest point procedure. The MRI will be updated to match the measured
-% head surface. This includes an optional manual coregistration of the two head
+% head surface. You can optionally do an initial manual coregistration of the two head
 % surfaces.
 %
-% SPM - align the individual MRI to the coordinate system of a target or template MRI
+% SPM - Align the individual MRI to the coordinate system of a target or template MRI
 % by matching the two volumes.
 %
-% FSL - align the individual MRI to the coordinate system of a target or template MRI
+% FSL - Align the individual MRI to the coordinate system of a target or template MRI
 % by matching the two volumes.
 %
 % Use as
@@ -392,7 +394,7 @@ switch cfg.method
         set(h, 'windowbuttondownfcn', @cb_buttonpress);
         set(h, 'windowbuttonupfcn',   @cb_buttonrelease);
         set(h, 'windowkeypressfcn',   @cb_keyboard);
-        set(h, 'CloseRequestFcn',     @cb_cleanup);
+        set(h, 'CloseRequestFcn',     @cb_quit);
         
         % axis handles will hold the anatomical functional if present, along with labels etc.
         h1 = axes('position', [0.06                0.06+0.06+h3size(2) h1size(1) h1size(2)]);
@@ -554,6 +556,7 @@ switch cfg.method
         tmpcfg             = [];
         tmpcfg.tissue      = 'scalp';
         tmpcfg.method      = 'isosurface';
+        tmpcfg.spmversion  = cfg.spmversion;
         tmpcfg.numvertices = inf;
         scalp              = ft_prepare_mesh(tmpcfg, seg);
         scalp              = ft_convert_units(scalp, 'mm');
@@ -574,7 +577,7 @@ switch cfg.method
         set(h, 'visible', 'on');
         % add callbacks
         set(h, 'windowkeypressfcn',   @cb_keyboard_surface);
-        set(h, 'CloseRequestFcn',     @cb_cleanup);
+        set(h, 'CloseRequestFcn',     @cb_quit);
         
         % create figure handles
         h1 = axes;
@@ -670,6 +673,7 @@ switch cfg.method
       % extract the scalp surface from the anatomical image
       tmpcfg        = [];
       tmpcfg.output = 'scalp';
+      tmpcfg.spmversion     = cfg.spmversion;
       tmpcfg.scalpsmooth    = cfg.headshape.scalpsmooth;
       tmpcfg.scalpthreshold = cfg.headshape.scalpthreshold;
       if isfield(cfg, 'template')
@@ -683,17 +687,17 @@ switch cfg.method
     
     tmpcfg             = [];
     tmpcfg.tissue      = 'scalp';
-    tmpcfg.method      = 'projectmesh';%'isosurface';
+    tmpcfg.method      = 'projectmesh'; %'isosurface';
+    tmpcfg.spmversion  = cfg.spmversion;
     tmpcfg.numvertices = 20000;
     scalp              = ft_prepare_mesh(tmpcfg, seg);
     
     if dointeractive
       fprintf('doing interactive realignment with headshape\n');
-      tmpcfg                       = [];
-      tmpcfg.template.elec         = shape;     % this is the Polhemus recorded headshape
-      tmpcfg.template.elec.chanpos = shape.pos; % ft_interactiverealign needs the field chanpos
-      tmpcfg.template.elec.label = cellstr(num2str((1:size(shape.pos,1))'));
-      tmpcfg.individual.headshape  = scalp;     % this is the headshape extracted from the anatomical MRI
+      tmpcfg                           = [];
+      tmpcfg.template.headshape        = shape;     % this is the Polhemus recorded headshape
+      tmpcfg.template.headshapestyle   = 'vertex';
+      tmpcfg.individual.headshape      = scalp;     % this is the headshape extracted from the anatomical MRI
       tmpcfg.individual.headshapestyle = 'surface';
       tmpcfg = ft_interactiverealign(tmpcfg);
       M      = tmpcfg.m;
@@ -979,7 +983,7 @@ switch cfg.method
       transform     = inv(spm_matrix(x(:)')); % from V1 to V2, to be multiplied still with the original transform (mri.transform), see below
       
     end
-
+    
     if isfield(target, 'coordsys')
       coordsys = target.coordsys;
     else
@@ -1095,16 +1099,16 @@ if viewresult
   set(h, 'windowbuttondownfcn', @cb_buttonpress);
   set(h, 'windowbuttonupfcn',   @cb_buttonrelease);
   set(h, 'windowkeypressfcn',   @cb_keyboard);
-  set(h, 'CloseRequestFcn',     @cb_cleanup);
+  set(h, 'CloseRequestFcn',     @cb_quit);
   
   % axis handles will hold the anatomical functional if present, along with labels etc.
   h1 = axes('position', [0.06                0.06+0.06+h3size(2) h1size(1) h1size(2)]);
   h2 = axes('position', [0.06+0.06+h1size(1) 0.06+0.06+h3size(2) h2size(1) h2size(2)]);
   h3 = axes('position', [0.06                0.06                h3size(1) h3size(2)]);
   
-  set(h1, 'Tag', 'ik', 'Visible', 'off', 'XAxisLocation', 'top');
+  set(h1, 'Tag', 'ij', 'Visible', 'off', 'XAxisLocation', 'top');
   set(h2, 'Tag', 'jk', 'Visible', 'off', 'YAxisLocation', 'right'); % after rotating in ft_plot_ortho this becomes top
-  set(h3, 'Tag', 'ij', 'Visible', 'off');
+  set(h3, 'Tag', 'ik', 'Visible', 'off');
   
   set(h1, 'DataAspectRatio', 1./[voxlen1 voxlen2 voxlen3]);
   set(h2, 'DataAspectRatio', 1./[voxlen1 voxlen2 voxlen3]);
@@ -1361,7 +1365,7 @@ if isempty(eventdata)
   key = get(h, 'userdata');
 else
   % determine the key that was pressed on the keyboard
-  key = parseKeyboardEvent(eventdata);
+  key = parsekeyboardevent(eventdata);
 end
 
 % get the most recent surface position that was clicked with the mouse
@@ -1394,7 +1398,7 @@ end
 setappdata(h, 'opt', opt);
 
 if isequal(key, 'q')
-  cb_cleanup(h);
+  cb_quit(h);
 else
   cb_redraw_surface(h);
 end
@@ -1687,23 +1691,23 @@ uiresume
 % SUBFUNCTION
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function cb_keyboard(h, eventdata)
+h   = getparent(h);
+opt = getappdata(h, 'opt');
 
 if isempty(eventdata)
   % determine the key that corresponds to the uicontrol element that was activated
   key = get(h, 'userdata');
 else
   % determine the key that was pressed on the keyboard
-  key = parseKeyboardEvent(eventdata);
+  key = parsekeyboardevent(eventdata);
 end
+
 % get focus back to figure
 if ~strcmp(get(h, 'type'), 'figure')
   set(h, 'enable', 'off');
   drawnow;
   set(h, 'enable', 'on');
 end
-
-h   = getparent(h);
-opt = getappdata(h, 'opt');
 
 curr_ax = get(h, 'currentaxes');
 tag     = get(curr_ax, 'tag');
@@ -1713,7 +1717,7 @@ if isempty(key)
   key = '';
 end
 
-% the following code is largely shared with FT_SOURCEPLOT
+% the following code is largely shared by FT_SOURCEPLOT, FT_VOLUMEREALIGN, FT_INTERACTIVEREALIGN, FT_MESHREALIGN, FT_ELECTRODEPLACEMENT
 switch key
   case {'' 'shift+shift' 'alt-alt' 'control+control' 'command-0'}
     % do nothing
@@ -1739,7 +1743,7 @@ switch key
     
   case 'q'
     setappdata(h, 'opt', opt);
-    cb_cleanup(h);
+    cb_quit(h);
     
   case {'i' 'j' 'k' 'm' 28 29 30 31 'leftarrow' 'rightarrow' 'uparrow' 'downarrow'} % TODO FIXME use leftarrow rightarrow uparrow downarrow
     % update the view to a new position
@@ -1762,8 +1766,8 @@ switch key
     setappdata(h, 'opt', opt);
     cb_redraw(h);
     
+  case {43 'add' 'shift+equal'}  % + or numpad +
     % contrast scaling
-  case {43 'shift+equal'}  % numpad +
     % disable if viewresult
     if ~opt.viewresult
       if isempty(opt.clim)
@@ -1777,7 +1781,8 @@ switch key
       cb_redraw(h);
     end
     
-  case {45 'shift+hyphen'} % numpad -
+  case {45 'subtract' 'hyphen' 'shift+hyphen'} % - or numpad -
+    % contrast scaling
     % disable if viewresult
     if ~opt.viewresult
       if isempty(opt.clim)
@@ -1926,7 +1931,7 @@ uiresume
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % SUBFUNCTION
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function cb_cleanup(h, eventdata)
+function cb_quit(h, eventdata)
 
 opt = getappdata(h, 'opt');
 if ~opt.viewresult
@@ -1947,35 +1952,6 @@ while p~=0
   h = p;
   p = get(h, 'parent');
 end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% SUBFUNCTION
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function key = parseKeyboardEvent(eventdata)
-
-key = eventdata.Key;
-
-% handle possible numpad events (different for Windows and UNIX systems)
-% NOTE: shift+numpad number does not work on UNIX, since the shift
-% modifier is always sent for numpad events
-if isunix()
-  shiftInd = match_str(eventdata.Modifier, 'shift');
-  if ~isnan(str2double(eventdata.Character)) && ~isempty(shiftInd)
-    % now we now it was a numpad keystroke (numeric character sent AND
-    % shift modifier present)
-    key = eventdata.Character;
-    eventdata.Modifier(shiftInd) = []; % strip the shift modifier
-  end
-elseif ispc()
-  if strfind(eventdata.Key, 'numpad')
-    key = eventdata.Character;
-  end
-end
-
-if ~isempty(eventdata.Modifier)
-  key = [eventdata.Modifier{1} '+' key];
-end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % SUBFUNCTION

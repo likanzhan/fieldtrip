@@ -49,10 +49,7 @@ eeg = rmfield(eeg, 'variance');
 eeg.time = linspace(eeg.xmin, eeg.xmax, eeg.npnt);
 
 % open the file and seek towards the place where the raw data is
-fid = fopen(filename,'r','ieee-le');
-if fid<0
-  ft_error(['cannot open ', filename]);
-end
+fid = fopen_or_error(filename,'r','ieee-le');
 
 % the default is to read all epochs
 if nargin<2
@@ -74,7 +71,7 @@ elseif floor(sample_size)==4
   epoch_size = eeg.nchan*eeg.npnt*4 + 13;
 elseif floor(sample_size)>4
   % although this is not to be expected, it might be due to a very large "footer" compared to the data size
-  % Olga Sysoeva reported that this extention to the datatype detection fixed it for her (see http://bugzilla.fcdonders.nl/show_bug.cgi?id=547)
+  % Olga Sysoeva reported that this extention to the datatype detection fixed it for her (see http://bugzilla.fieldtriptoolbox.org/show_bug.cgi?id=547)
   datatype ='int32';
   epoch_size = eeg.nchan*eeg.npnt*4 + 13;
 end

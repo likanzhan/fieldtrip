@@ -3,11 +3,7 @@ function test_ft_megplanar
 % MEM 1500mb
 % WALLTIME 00:10:00
 
-% TEST ft_megplanar ft_prepare_neighbours ft_topoplotER
-
-% use FieldTrip defaults instead of personal defaults
-global ft_default;
-ft_default = [];
+% DEPENDENCY ft_megplanar ft_prepare_neighbours ft_topoplotER
 
 datainfo = ref_datasets;
 sel      = match_str({datainfo.datatype}',{'bti148' 'bti248' 'ctf151' 'ctf275' 'itab153' 'yokogawa160'}');
@@ -45,10 +41,9 @@ for k = 1:numel(datainfo)
   vol.unit = 'cm';
   
   % ensure units in the gradiometer array and volume conductor to be equal
-  data.grad = ft_convert_units(data.grad);
-  vol       = ft_convert_units(vol, data.grad.unit);
+  vol = ft_convert_units(vol, data.grad.unit);
   cfg.planarmethod = 'sourceproject';
-  cfg.vol = vol;
+  cfg.headmodel = vol;
   data5 = ft_megplanar(cfg, data);
   
 %   % subtract mean

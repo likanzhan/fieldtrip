@@ -3,8 +3,6 @@ function failed_tutorial_spikefield20130308
 % MEM 2500mb
 % WALLTIME 00:10:00
 
-% TEST test_tutorial_spikefield20130308
-
 % Preprocessing
 % The data for this tutorial can be downloaded on ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/tutorial/spikefield/p029_sort_final_01.nex. Make sure you add the main Fieldtrip directory to your path and run ft_defaults. We first read in the spike data by ft_read_spike and select the following channels for analysis from the spike structure using ft_spike_select by
 
@@ -136,7 +134,7 @@ spikeTrials   = ft_spike_maketrials(cfg,spike);
 
 cfg          = [];
 cfg.dataset  = filenex;
-cfg.trialfun = 'trialfun_stimon'; % this was defined in the [ftp:fieldtrip.fcdonders.nl/tutorial/spike] tutorial
+cfg.trialfun = 'trialfun_stimon'; % this was defined in the spike tutorial
 cfg          = ft_definetrial(cfg);
 cfg.timestampspersecond = 40000;
 spikeTrials2 = ft_spike_maketrials(cfg,spike);

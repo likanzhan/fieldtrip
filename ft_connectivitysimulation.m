@@ -6,7 +6,6 @@ function [simulated] = ft_connectivitysimulation(cfg)
 %
 % Use as
 %   [data] = ft_connectivitysimulation(cfg)
-%
 % where the configuration structure should contain:
 %   cfg.method      = string, can be 'linear_mix', 'mvnrnd', 'ar', 'ar_reverse' (see below)
 %   cfg.nsignal     = scalar, number of signals
@@ -14,14 +13,11 @@ function [simulated] = ft_connectivitysimulation(cfg)
 %   cfg.triallength = in seconds
 %   cfg.fsample     = in Hz
 %
-% Depending on the specific method that is selected, the configuration
-% may also contain:
-%
 % Method 'linear_mix' implements a linear mixing with optional time shifts
 % where the number of unobserved signals can be different from the number
 % of observed signals
 %
-% Required cfg options:
+% Required configuration options:
 %   cfg.mix    = matrix, [nsignal x number of unobserved signals]
 %                specifying the mixing from the unobserved signals to
 %                the observed signals, or
@@ -36,7 +32,7 @@ function [simulated] = ft_connectivitysimulation(cfg)
 %                specifying the time shift (in samples) between the
 %                unobserved signals and the observed signals
 %
-% Optional cfg options:
+% Optional configuration options:
 %   cfg.bpfilter  = 'yes' (or 'no')
 %   cfg.bpfreq    = [bplow bphigh] (default: [15 25])
 %   cfg.demean    = 'yes' (or 'no')
@@ -53,11 +49,11 @@ function [simulated] = ft_connectivitysimulation(cfg)
 % parameters on the simulation is not really clear. This method will be
 % disabled in the future.
 %
-% Required cfg options:
+% Required configuration options:
 %   cfg.covmat    = covariance matrix between the signals
 %   cfg.delay     = delay vector between the signals in samples
 %
-% Optional cfg options:
+% Optional configuration options:
 %   cfg.bpfilter  = 'yes' (or 'no')
 %   cfg.bpfreq    = [bplow bphigh] (default: [15 25])
 %   cfg.demean    = 'yes' (or 'no')
@@ -88,7 +84,7 @@ function [simulated] = ft_connectivitysimulation(cfg)
 %   cfg.delay    = nxn matrix, specifying the delay, in seconds, from one
 %                   signal's spectral component to the other signal, rows
 %                   causing column
-%   cfg.ampl     = nxn matrix, specifying the amplitude 
+%   cfg.ampl     = nxn matrix, specifying the amplitude
 %   cfg.bpfreq   = nxnx2 matrix, specifying the lower and upper frequencies
 %                   of the bands that are transmitted, rows causing column
 %
@@ -171,7 +167,7 @@ tim   = (0:nsmp-1)./cfg.fsample;
 % create the labels
 label = cell(cfg.nsignal,1);
 for k = 1:cfg.nsignal
-  label{k,1} = ['signal',num2str(k,'%03d')];
+  label{k,1} = ['signal',num2str(k, '%03d')];
 end
 
 switch cfg.method
@@ -188,21 +184,21 @@ switch cfg.method
       % 13, 2011. This swaps the directional influence for existing scripts.
     end
     for k = 1:cfg.ntrials
-      tmp   = zeros(nsignal, nsmp+nlag);
-      noise  = mvnrnd(zeros(nsignal,1), cfg.noisecov, nsmp+nlag)';
+      tmp   = zeros(nsignal, nsmp+ceil(nlag*1.05));
+      noise  = mvnrnd(zeros(nsignal,1), cfg.noisecov, ceil(nsmp+nlag*1.05))';
       state0 = zeros(nsignal*nlag, 1);
       for m = 1:nlag
         indx = ((m-1)*nsignal+1):m*nsignal;
         state0(indx) = params(indx,:)'*noise(:,m);
       end
-      tmp(:,1:nlag) = fliplr(reshape(state0, [nsignal nlag]));
+      tmp(:,1:nlag) = flip(reshape(state0, [nsignal nlag]),2);
 
-      for m = (nlag+1):(nsmp+nlag)
-        state0    = reshape(fliplr(tmp(:,(m-nlag):(m-1))), [nlag*nsignal 1]);
+      for m = (nlag+1):(nsmp+ceil(nlag*1.05))
+        state0    = reshape(flip(tmp(:,(m-nlag):(m-1)),2), [nlag*nsignal 1]);
         tmp(:, m) = params'*state0 + noise(:,m);
       end
 
-      trial{k} = tmp(:,nlag+1:end);
+      trial{k} = tmp(:,(ceil(nlag*1.05)+1):end);
       if any(cfg.absnoise>0)
         trial{k} = trial{k} + diag(cfg.absnoise)*randn(size(trial{k}));
       end
@@ -300,7 +296,7 @@ switch cfg.method
       % define time axis for this trial
       time{k}  = tim;
     end
-    
+
     % create the output data
     simulated         = [];
     simulated.trial   = trial;
@@ -311,27 +307,31 @@ switch cfg.method
   case 'ar_reverse'
     % generate a spectral transfer matrix, and a cross-spectral matrix
     % according to the specifications
-    
+
     % predefine some variables
+    fstep = 1/5;
     fs    = cfg.fsample;
     Nyq   = fs./2;
-    foi   = (0:0.2:Nyq);
+    foi   = (0:fstep:Nyq);
     omega = foi./fs;
     n     = numel(foi);
 
-    
     % local renaming
     nsignal = cfg.nsignal;
     fband   = cfg.bpfreq;
     coupling = cfg.coupling;
     ampl     = cfg.ampl;
     delay    = cfg.delay;
-    
+
     % create a 1/f spectrum
     slope    = 0.5;
     oneoverf = sqrt(max(omega(2)./10,omega).^-slope); % takes sqrt for amplitude
     oneoverf = oneoverf./oneoverf(1);
-    
+    %oneoverf(1) = 0;
+    %z = firws_filter(5.*fs, fs, Nyq./1.01);
+    %z = z(1:numel(foi)); %.*exp(-1i.*pi.*foi.*rand(1)./100);
+    %oneoverf = z.*oneoverf;
+
     % convert into indices
     findx = fband;
     for k = 1:numel(fband)
@@ -339,73 +339,90 @@ switch cfg.method
         findx(k) = nearest(foi, fband(k));
       end
     end
-    
+
     % allocate some memory
     mask = false(nsignal, nsignal, n);
     krn = zeros(size(mask));
     phi = zeros(size(krn));
     dat = zeros(size(krn));
     coupling_ampl = zeros(size(krn));
-    
+
     for k = 1:nsignal
       for m = 1:nsignal
         if all(isfinite(squeeze(findx(k,m,:))))
           mask(k,m,findx(k,m,1):findx(k,m,2)) = true;
         end
         krn(k,m,mask(k,m,:))  = hanning(sum(mask(k,m,:)))';
-        
+
         phi(k,m,:) = 2.*pi.*delay(k,m).*foi;
-        phi(k,m,:) = phi(k,m,:).*mask(k,m,:);
-        phi(k,m,mask(k,m,:)) = phi(k,m,mask(k,m,:))-mean(phi(k,m,mask(k,m,:)));
-        
-        coupling_ampl(k,m,:) = coupling(m,k).*krn(k,m,:);
+        %phi(k,m,:) = phi(k,m,:).*mask(k,m,:);
+        %phi(k,m,mask(k,m,:)) = phi(k,m,mask(k,m,:))-mean(phi(k,m,mask(k,m,:)));
+        if all(isfinite(squeeze(findx(k,m,:))))
+          phi(k,m,1:findx(k,m,1)) = phi(k,m,findx(k,m,1));
+          phi(k,m,findx(k,m,2):end) = phi(k,m,findx(k,m,2));
+          phi(k,m,:) = phi(k,m,:)-mean(phi(k,m,:));
+        end
+
+        coupling_ampl(k,m,:) = coupling(k,m).*krn(k,m,:);
       end
     end
-    
-    % this matrix contains the amplitude spectra on the diagonal
+
+    % this matrix contains the intrinsic amplitude spectra on the diagonal
     for k = 1:nsignal
-      dat(k,k,:) = oneoverf;
-      for m = 1:nsignal
-        dat(k,k,:) = dat(k,k,:)+krn(m,m,:).*ampl(k,m);
+      if all(isfinite(squeeze(fband(k,k,:))))
+        z = firws_filter((1/fstep).*fs, fs, [fband(k,k,1) fband(k,k,2)]);
+        z = z(1:numel(foi)); %.*exp(-1i.*pi.*foi.*rand(1)./100);
+        z = z.*ampl(k,k);
+
+        plateau = nearest(foi,fband(k,k,1)):nearest(foi,fband(k,k,2));
+        oneoverf(plateau) = mean(abs(oneoverf(plateau)));
+        dat(k,k,:) = -(abs(oneoverf)+abs(z)).*exp(1i.*(angle(z)+angle(oneoverf)));
+      else
+        dat(k,k,:) = oneoverf;
       end
     end
-    
+
     % now we can create a spectral transfer matrix
     tf = zeros(nsignal,nsignal,n)+1i.*zeros(nsignal,nsignal,n);
     for k = 1:nsignal
       for m = 1:nsignal
-        if k~=m
-          tf(k,m,:) = coupling_ampl(k,m,:).*exp(1i.*phi(k,m,:));
-        else
+        if k~=m && all(isfinite(squeeze(fband(k,m,:))))
+          z = firws_filter((1/fstep).*fs, fs, [fband(k,m,1) fband(k,m,2)]);
+          z = z(1:numel(foi));
+          tf(m,k,:) = coupling(k,m).*exp(-1i.*phi(k,m,:)).*shiftdim(z,-1); % deliberate index swap!
+
+        elseif k==m
           tf(k,m,:) = dat(k,m,:);
         end
       end
     end
-    
+
     % create the cross spectral matrix
     c = zeros(size(tf));
     for k = 1:n
       c(:,:,k) = tf(:,:,k)*tf(:,:,k)'; % assume noise to be I, i.e. the tf to swallow the amplitudes
     end
-    
+
+    % scale the Nyquist and DC bins
+    c(:,:,1)   = real(c(:,:,1)./2);
+    c(:,:,end) = real(c(:,:,end)./2);
+
     % create a freq-structure
     freq           = [];
     freq.crsspctrm = c;
     freq.label     = label;
     freq.freq      = foi;
     freq.dimord    = 'chan_chan_freq';
-   
-    % estimate the transfer-matrix
+
+    % estimate the transfer-matrix non-parametrically
     tmpcfg        = [];
     tmpcfg.method = 'transfer';
+    tmpcfg.granger.stabilityfix = true;
     t             = ft_connectivityanalysis(tmpcfg, freq);
-    %t.noisecov = repmat(t.noisecov, [1 numel(t.freq)]);
-    %t          = ft_checkdata(t, 'cmbrepresentation', 'full');
-    %t.noisecov = t.noisecov(:,:,1);
-    
+
     % estimate the ar-model coefficients
-    a = transfer2coeffs(t.transfer,t.freq);
-    
+     a = transfer2coeffs(t.transfer,t.freq);
+
     % recursively call this function to generate the data, this is
     % somewhate tricky with respect to keeping the provenance info. Here,
     % it is solved by removing from the cfg the original user-specified
@@ -414,10 +431,10 @@ switch cfg.method
     cfg          = removefields(cfgorig, {'coupling' 'ampl' 'delay' 'bpfreq'});
     cfg.method   = 'ar';
     cfg.params   = a;
-    cfg.noisecov = t.noisecov.*cfg.fsample.*cfg.triallength./2;
+    cfg.noisecov = diag(diag(t.noisecov.*cfg.fsample./2));
     simulated    = ft_connectivitysimulation(cfg);
     cfg.previous = keepfields(cfgorig, {'coupling' 'ampl' 'delay' 'bpfreq'});
-    
+
   otherwise
     ft_error('unknown method');
 end
@@ -466,10 +483,10 @@ if ~all(dfreq==dfreq(1))
 end
 
 if freq(1)~=0
-  ft_warning('when converting the transfer function to coefficients, the frequency axis should ideally start at 0, zero padding the spectral density'); 
+  ft_warning('when converting the transfer function to coefficients, the frequency axis should ideally start at 0, zero padding the spectral density');
   dfreq = mean(dfreq);
   npad  = freq(1)./dfreq;
-  
+
   % update the freq axis and keep track of the frequency bins that are
   % expected in the output
   selfreq  = (1:numel(freq)) + npad;
@@ -513,26 +530,26 @@ if isfull
     Harr(:,:,       k) = H(:,:,k);
     Harr(:,:,(N2+2)-k) = conj(H(:,:,k));
   end
-  
+
   % the input cross-spectral density is assumed to be weighted with a
   % factor of 2 in all non-DC and Nyquist bins, therefore weight the
   % Nyquist bin with a factor of sqrt(2) to get a correct two-sided representation
   if mod(size(Harr,3),2)==0
     Harr(:,:,N) = Harr(:,:,N).*sqrt(2);
   end
-  
+
   % invert the transfer matrix to get the fourier representation of the
-  % coefficients, and add an identity matrix 
+  % coefficients, and add an identity matrix
   I = eye(siz(1));
   for k = 1:size(Harr,3)
     Harr(:,:,k) = I-inv(Harr(:,:,k));
   end
-  
+
   % take the inverse fft to get the coefficients
   A = ifft(reshape(permute(Harr, [3 1 2]), N2, []), 'symmetric');
   A = A(2:end,:);
   A = ipermute(reshape(A, [N2-1 siz(1) siz(1)]), [3 1 2]);
-  
+
   if ~isempty(maxlag)
     A = A(:,:,1:maxlag);
   end
@@ -563,16 +580,16 @@ else
     Harr(:,       k) = H(:,k);
     Harr(:,(N2+2)-k) = conj(H(:,k));
   end
-  
+
   % the input cross-spectral density is assumed to be weighted with a
   % factor of 2 in all non-DC and Nyquist bins, therefore weight the
   % Nyquist bin with a factor of sqrt(2) to get a correct two-sided representation
   if mod(size(Harr,3),2)==0
     Harr(:,N) = Harr(:,N).*sqrt(2);
   end
-  
+
   % invert the transfer matrix to get the fourier representation of the
-  % coefficients, and add an identity matrix 
+  % coefficients, and add an identity matrix
   %
   % this assumes Harr to be in the rows quadruplets of pairwise
   % decompositions, i.e. reshapable, without checking the labelcmb
@@ -583,14 +600,27 @@ else
     Htmp = repmat(I, [1 1 ncmb]) - inv2x2(Htmp);
     Harr(:,k) = Htmp(:);
   end
-    
+
   % take the inverse fft to get the coefficients
   A = ifft(permute(Harr, [2 1]), 'symmetric');
   A = A(2:end,:);
   A = ipermute(A, [2 1]);
-  
+
   if ~isempty(maxlag)
     A = A(:,1:maxlag);
   end
+
+end
+
+function z = firws_filter(N, Fs, Fbp)
+
+switch numel(Fbp)
+  case 1
+    [dum, B] = ft_preproc_lowpassfilter(randn(1,N), Fs, Fbp, [], 'firws', 'onepass-minphase');
+    z  = fft(B, N);
+
+  case 2
+    [dum, B] = ft_preproc_bandpassfilter(randn(1,N), Fs, Fbp, [], 'firws', 'onepass-minphase');
+    z  = fft(B, N);
 
 end

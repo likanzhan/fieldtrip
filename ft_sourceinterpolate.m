@@ -63,8 +63,8 @@ function [interp] = ft_sourceinterpolate(cfg, functional, anatomical)
 % files should contain only a single variable, corresponding with the
 % input/output structure.
 %
-% See also FT_READ_MRI, FT_SOURCEANALYSIS, FT_SOURCESTATISTICS,
-% FT_READ_HEADSHAPE, FT_SOURCEPLOT, FT_SOURCEWRITE
+% See also FT_READ_MRI, FT_READ_HEADSHAPE, FT_SOURCEPLOT, FT_SOURCEANALYSIS,
+% FT_SOURCEWRITE
 
 % Copyright (C) 2003-2007, Robert Oostenveld
 % Copyright (C) 2011-2014, Jan-Mathijs Schoffelen
@@ -200,13 +200,12 @@ end
 if ~isUnstructuredAna && cfg.downsample~=1
   % downsample the anatomical volume
   tmpcfg = keepfields(cfg, {'downsample', 'showcallinfo'});
-  orgcfg.parameter = cfg.parameter;
   tmpcfg.parameter = 'anatomy';
   anatomical = ft_volumedownsample(tmpcfg, anatomical);
-  % restore the provenance information
+  % restore the provenance information and put back cfg.parameter
+  tmpparameter = cfg.parameter;
   [cfg, anatomical] = rollback_provenance(cfg, anatomical);
-  % restore the original parameter, it should not be 'anatomy'
-  cfg.parameter = orgcfg.parameter;
+  cfg.parameter = tmpparameter;
 end
 
 % collect the functional volumes that should be converted
@@ -288,7 +287,7 @@ if isUnstructuredFun && isUnstructuredAna && isfield(anatomical, 'orig') && isfi
 
 elseif isUnstructuredFun && isUnstructuredAna
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  % functional data defined on a point cloud/mesh, anatomy on a volume
+  % functional data defined on a point cloud/mesh, anatomy on a point cloud/mesh
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   % set default interpmethod for this situation
@@ -343,9 +342,9 @@ elseif isUnstructuredFun && isUnstructuredAna
 
 elseif isUnstructuredFun && ~isUnstructuredAna
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  % functional data defined on a point cloud/mesh, anatomy on a point cloud/mesh
+  % functional data defined on a point cloud/mesh, anatomy on a volume
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+  
   % set default interpmethod for this situation
   cfg.interpmethod = ft_getopt(cfg, 'interpmethod', 'nearest');
   cfg.sphereradius = ft_getopt(cfg, 'sphereradius', 0.5);

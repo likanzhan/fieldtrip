@@ -67,7 +67,7 @@ end
 % replace pnt with pos
 mesh = fixpos(mesh);
 
-if ~isstruct(mesh) || ~isfield(mesh, 'pos')
+if ~isstruct(mesh) || numel(mesh)>1 || ~isfield(mesh, 'pos')
   ft_error('the input mesh should be a set of points or a single triangulated surface')
 end
 
@@ -79,7 +79,7 @@ end
 headmodel = [];
 
 % ensure that the mesh has units, estimate them if needed
-mesh = ft_convert_units(mesh);
+mesh = ft_determine_units(mesh);
 
 % ensure that it has a consistent representation and consistent units
 grad = ft_datatype_sens(grad);

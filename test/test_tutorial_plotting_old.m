@@ -3,7 +3,7 @@ function test_tutorial_plotting
 % WALLTIME 00:15:00
 % MEM 4gb
 
-% TEST ft_multiplotER ft_singleplotER ft_topoplotER ft_singleplotTFR ft_multiplotTRF ft_megplanar ft_combineplanar ft_volumereslice
+% DEPENDENCY ft_multiplotER ft_singleplotER ft_topoplotER ft_singleplotTFR ft_multiplotTRF ft_megplanar ft_combineplanar ft_volumereslice
 
 % this tutorial reflects the plotting tutorial up to March 2017
 % around that time we did a data visualization workshop at the donders for which I created an updated tutorial
@@ -58,7 +58,8 @@ figure;ft_singleplotTFR(cfg, TFRhann); colorbar;
 cfg = [];                            
 cfg.xlim = [0.3 0.5];                
 cfg.zlim = [0 6e-14];                
-cfg.layout = 'CTF151.lay';            
+cfg.layout = 'CTF151.lay';    
+cfg.parameter = 'individual'; % the default (avg) is not present
 figure; ft_topoplotER(cfg,GA_FC); colorbar;    
 
 cfg = [];

@@ -57,16 +57,16 @@ ft_hastoolbox(cfg.spmversion, 1);
 
 % special exceptional case first
 if isempty(cfg.tissue) && numel(cfg.numvertices)==1 && isfield(mri,'white') && isfield(mri,'gray') && isfield(mri,'csf')
-  mri=ft_datatype_segmentation(mri, 'segmentationstyle', 'probabilistic', 'hasbrain', 'yes');
-  cfg.tissue='brain';
+  mri = ft_datatype_segmentation(mri, 'segmentationstyle', 'probabilistic', 'hasbrain', 'yes');
+  cfg.tissue = 'brain';
 end
 
 if isempty(cfg.tissue)
   mri = ft_datatype_segmentation(mri, 'segmentationstyle', 'indexed');
   fn = fieldnames(mri);
   for i=1:numel(fn)
-    if numel(mri.(fn{i}))==prod(mri.dim) && isfield(mri, [fn{i},'label'])
-      segfield=fn{i};
+    if numel(mri.(fn{i}))==prod(mri.dim) && isfield(mri, [fn{i}, 'label'])
+      segfield = fn{i};
     end
   end
   if isfield(mri, [segfield 'label'])
@@ -168,6 +168,7 @@ for i =1:numel(cfg.tissue)
       isovalues = 0.5;
       
       [pos, tri, regions, holes] = v2s(seg, isovalues, opt, method);
+      pos = pos + 0.5; % undo the shift that has been introduced in vol2restrictedtri
       
       tri = tri(:,1:3);
       

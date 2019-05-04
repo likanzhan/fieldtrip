@@ -28,7 +28,7 @@ function [data] = ft_determine_coordsys(data, varargin)
 % Recognized and supported coordinate systems include: ctf, 4d, bti, itab,
 % neuromag, spm, mni, tal, acpc, als, ras, paxinos.
 %
-% See also FT_VOLUMEREALIGN, FT_VOLUMERESLICE
+% See also FT_VOLUMEREALIGN, FT_VOLUMERESLICE, FT_PLOT_ORTHO, FT_PLOT_AXES
 
 % Copyright (C) 2015, Jan-Mathijs Schoffelen
 %
@@ -54,9 +54,8 @@ dointeractive = ft_getopt(varargin, 'interactive', 'yes');
 axisscale     = ft_getopt(varargin, 'axisscale', 1); % this is used to scale the axmax and rbol
 clim          = ft_getopt(varargin, 'clim', [0 1]); % this is used to scale the orthoplot
 
-data  = ft_checkdata(data);
+data  = ft_checkdata(data, 'hasunit', 'yes');
 dtype = ft_datatype(data);
-data  = ft_convert_units(data);
 
 % the high-level data structures are detected with ft_datatype, but there are
 % also some low-level data structures that need to be supproted here
@@ -67,7 +66,7 @@ if strcmp(dtype, 'unknown')
     dtype = 'mesh';
   elseif isfield(data, 'tet') && isfield(data, 'pos')
     dtype = 'mesh';
-  elseif ~strcmp(ft_voltype(data), 'unknown')
+  elseif ~strcmp(ft_headmodeltype(data), 'unknown')
     dtype = 'headmodel';
   elseif ~strcmp(ft_senstype(data), 'unknown')
     dtype = 'sens';
@@ -78,6 +77,8 @@ elseif strcmp(dtype, 'mesh+label')
 end
 
 if isfield(data, 'coordsys') && ~isempty(data.coordsys)
+  % ensure that it is in lower case
+  data.coordsys = lower(data.coordsys);
   % print the interpretation of the coordinate system
   [labelx, labely, labelz] = coordsys2label(data.coordsys, 2, 0);
   fprintf('The positive x-axis is pointing towards %s\n', labelx);
@@ -155,7 +156,7 @@ switch dtype
     camlight;
 
   case 'headmodel'
-    ft_plot_vol(data);
+    ft_plot_headmodel(data);
     camlight;
 
   case {'grad' 'elec' 'sens'}

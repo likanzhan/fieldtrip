@@ -2,12 +2,10 @@ function failed_neuromag_units
 
 % MEM 1500mb
 % WALLTIME 00:10:00
+% DEPENDENCY ft_read_header ft_read_data
 
-% TEST test_neuromag_units
-% TEST ft_read_header ft_read_data
-
-% http://bugzilla.fcdonders.nl/show_bug.cgi?id=953
-% http://bugzilla.fcdonders.nl/show_bug.cgi?id=963
+% http://bugzilla.fieldtriptoolbox.org/show_bug.cgi?id=953
+% http://bugzilla.fieldtriptoolbox.org/show_bug.cgi?id=963
 
 % this is a test dataset from Rik Henson that contains both MEG and EEG
 dataset = dccnpath('/home/common/matlab/fieldtrip/data/test/original/meg/neuromag306/run_01_raw.fif');
